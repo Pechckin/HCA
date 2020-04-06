@@ -1,0 +1,66 @@
+'''
+
+
+# Policy
+mu, sigma = self.policy(states)
+log_prob = Normal(mu, sigma).log_prob(actions).sum(dim=1, keepdims=True)
+
+# Credit
+mu, sigma = self.credit(states)
+log_prob = Normal(mu, sigma).log_prob(actions).sum(dim=1, keepdims=True)
+
+
+A = (1 - Policy/Credit) * Z
+A = GAE
+Z = sum( gamma ^ t * R)
+
+
+Там нам не нужно задавать распределение.
+ Мы как-то собираем эпизод, и дальше говорим,
+  что вот такую награду Z мы получили с помощью таких действий в таких состояниях.
+  И таким образом, нам надо сделать так, чтобы распределение было больше похоже на то,
+  что в этом состояние конкретное действие приодет к такой награде
+  (и большую похожесть задаем как раз кросс энтропией).
+
+
+Про действия
+Все-таки в основном используются как раз те два варианта:
+1. Заводим двух акторов
+2. Делаем как одно действие и говорим, что по состоянию агент должен понять,
+ что это действие будет как-то сильно не похоже влиять на среду
+
+Есть еще всякие изощренные подходы объединения пространств действий и т.д.
+ Но они работают только на конкретных играх,
+  и я не нашла ни одного продолжения статьи, о том, что эти методы могут быть использованы еще где-то
+'''
+'''
+
+
+
+if not self.memory.full():
+    return
+batch = self.memory.sample(self.batch_size)
+
+Vs = self.critic.forward(batch.s)
+with torch.no_grad():
+    Vns= self.critic.forward(batch.ns)
+Q_s_a = batch.r.unsqueeze(1) + self.gamma * V_ss
+A = Q_s_a - V_s
+actor_loss = -(A.T @ batch.p) / batch.p.size(0)
+critic_loss = self.critic_criterion(V_s, Q_s_a)
+
+self.actor_optim.zero_grad()
+actor_loss.backward(retain_graph=True)
+
+self.critic_optim.zero_grad()
+critic_loss.backward()
+
+for param in self.actor.parameters():
+    param.grad.data.clamp_(-7, 7)
+
+for param in self.critic.parameters():
+    param.grad.data.clamp_(-5, 5)
+
+self.actor_optim.step()
+self.critic_optim.step()
+'''
